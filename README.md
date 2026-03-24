@@ -61,7 +61,7 @@ python main.py --add-resume <path_to_pdf>
 ```
 This adds single resume files without reloading the entire database while automatically detecting duplicates based on metadata (name, email, phone)
 
-### 6. 🆕 Intelligent Agent Mode (Recommended)
+### 6. Intelligent Agent Mode (Recommended)
 ```bash
 python main.py --agent
 ```
