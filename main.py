@@ -7,6 +7,7 @@ from pdf_processor import PDFProcessor
 from vector_store import VectorStore
 from rag_system import RAGSystem
 from metadata_extractor import MetadataExtractor
+from agent_controller import AgentController
 import config
 
 logging.basicConfig(
@@ -192,6 +193,94 @@ def query_resumes(vector_store):
             logger.error(f"Error processing query: {str(e)}")
             print(f"\nError: {str(e)}\n")
 
+def run_agent_mode():
+    """Interactive agent mode with multi-step reasoning"""
+    logger.info("Starting intelligent agent mode...")
+    
+    # Initialize vector store
+    vector_store = VectorStore(config.CHROMA_DB_DIR, config.COLLECTION_NAME)
+    
+    # Check if there are documents
+    stats = vector_store.get_collection_stats()
+    if stats['total_documents'] == 0:
+        logger.error("No documents in vector store. Please run with --load first.")
+        print("\nError: No resumes loaded in database.")
+        print("Please run: python main.py --load")
+        return
+    
+    # Initialize agent
+    agent = AgentController(
+        vector_store=vector_store,
+        model_name=config.AGENT_MODEL,
+        max_iterations=config.AGENT_MAX_ITERATIONS
+    )
+    
+    print("\n" + "="*80)
+    print("INTELLIGENT AGENT MODE - Multi-Step Reasoning")
+    print("="*80)
+    print(f"Model: {config.AGENT_MODEL}")
+    print(f"Documents in database: {stats['total_documents']}")
+    print("\nThe agent will autonomously break down your query and use multiple tools")
+    print("to find the best answer through reasoning and action.")
+    print("\nAvailable commands:")
+    print("  - Type your question naturally")
+    print("  - 'trace' - Toggle reasoning trace visibility")
+    print("  - 'tools' - Show available tools")
+    print("  - 'quit' or 'exit' - Exit agent mode")
+    print("="*80 + "\n")
+    
+    show_trace = config.ENABLE_REASONING_TRACE
+    
+    while True:
+        try:
+            query = input("Your question: ").strip()
+            
+            if query.lower() in ['quit', 'exit', 'q']:
+                print("\nGoodbye!")
+                break
+            
+            if query.lower() == 'trace':
+                show_trace = not show_trace
+                print(f"\nReasoning trace {'enabled' if show_trace else 'disabled'}\n")
+                continue
+            
+            if query.lower() == 'tools':
+                print("\nAvailable Tools:")
+                print(agent.tool_registry.get_tools_description())
+                continue
+            
+            if not query:
+                continue
+            
+            # Run agent
+            print("\n" + "-"*80)
+            print("Agent is thinking...")
+            print("-"*80)
+            
+            result = agent.run(query, verbose=show_trace)
+            
+            # Display response
+            print("\n" + "="*80)
+            print("RESPONSE:")
+            print("="*80)
+            print(result['response'])
+            print("="*80)
+            
+            if show_trace:
+                print(f"\n[Completed in {result['iterations']} reasoning step(s)]")
+            
+            print()
+            
+        except KeyboardInterrupt:
+            print("\n\nGoodbye!")
+            break
+        except Exception as e:
+            logger.error(f"Error in agent mode: {str(e)}")
+            print(f"\nError: {str(e)}\n")
+
+            logger.error(f"Error processing query: {str(e)}")
+            print(f"\nError: {str(e)}\n")
+
 def main():
     parser = argparse.ArgumentParser(
         description="Resume RAG System - Load resumes and query them using AI"
@@ -222,16 +311,26 @@ def main():
         action='store_true',
         help='Replace existing resume if duplicate is found (use with --add-resume)'
     )
+    parser.add_argument(
+        '--agent',
+        action='store_true',
+        help='Start intelligent agent mode with multi-step reasoning'
+    )
     
     args = parser.parse_args()
     
     # If no arguments provided, show help
-    if not (args.load or args.query or args.load_and_query or args.add_resume):
+    if not (args.load or args.query or args.load_and_query or args.add_resume or args.agent):
         parser.print_help()
         return
     
     try:
         vector_store = None
+        
+        # Agent mode
+        if args.agent:
+            run_agent_mode()
+            return
         
         # Add single resume
         if args.add_resume:

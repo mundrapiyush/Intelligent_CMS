@@ -23,3 +23,13 @@ CHUNK_OVERLAP = 200
 
 # Retrieval settings
 TOP_K_RESULTS = 3
+
+# Agent settings
+AGENT_MODEL = "llama3.2:latest"
+AGENT_MAX_ITERATIONS = 5
+AGENT_TEMPERATURE = 0.3
+ENABLE_REASONING_TRACE = True
+
+# Tool settings
+SEARCH_TOP_K = 3
+FILTER_MATCH_THRESHOLD = 0.7
